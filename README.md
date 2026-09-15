@@ -39,10 +39,12 @@ What the numbers mean:
 
 ## Reports
 
-- [01_backtest.html](01_backtest.html): both variants, trade statistics, drawdown, and how concentrated the profits are.
-- [02_benchmark.html](02_benchmark.html): side-by-side comparison with buy & hold, including a year-by-year breakdown.
+View the reports online:
 
-Each report is one self-contained file with its data built in. GitHub shows HTML as source code, so download the file and open it in a browser to see the report. Styling loads Tailwind from a CDN, so the page needs an internet connection to look right; the data and charts work without one.
+- **[Backtest report](https://jazzthedog.github.io/Backtest-Strategy1/01_backtest.html)**: both variants, trade statistics, drawdown, and how concentrated the profits are.
+- **[Benchmark report](https://jazzthedog.github.io/Backtest-Strategy1/02_benchmark.html)**: side-by-side comparison with buy & hold, including a year-by-year breakdown.
+
+Both are designed for a 1920×1080 screen. Each report is one self-contained file with its data built in, so you can also download it and open it locally. Styling loads Tailwind from a CDN, so the page needs an internet connection to look right; the data and charts work without one.
 
 ## Running it
 
