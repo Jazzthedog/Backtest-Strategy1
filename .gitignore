@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+/qqq_raw.csv
+/Prompt - 20 days highest high.txt

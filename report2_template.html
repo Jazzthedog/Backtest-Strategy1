@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>QQQ 20/10 Breakout vs Buy &amp; Hold — Benchmark Comparison</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --ground:#08171E; --panel:#0F2630; --border:#1E3A45;
+    --pos:#37F083; --amber:#F2B03C; --neg:#F2643C; --text:#E6EDF0;
+    --muted:rgba(230,237,240,.52); --blue:#6FA8BC;
+  }
+  html,body{background:var(--ground);color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;}
+  .muted{color:var(--muted);}
+  .def{color:var(--muted);font-size:11.5px;line-height:1.5;font-style:italic;}
+  .src{color:var(--muted);font-size:10.5px;letter-spacing:.02em;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+    letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid;}
+  .pill-pos{color:var(--pos);border-color:rgba(55,240,131,.42);background:rgba(55,240,131,.09);}
+  .pill-amber{color:var(--amber);border-color:rgba(242,176,60,.42);background:rgba(242,176,60,.09);}
+  .pill-neg{color:var(--neg);border-color:rgba(242,100,60,.42);background:rgba(242,100,60,.09);}
+  .pill-mute{color:var(--muted);border-color:var(--border);background:rgba(230,237,240,.04);}
+  .kpi{font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:-.02em;}
+  .whatshows{font-size:12px;color:var(--text);opacity:.82;line-height:1.55;}
+  .whatshows b{color:var(--amber);font-weight:700;letter-spacing:.06em;font-size:10px;}
+  table{font-variant-numeric:tabular-nums;}
+  th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  td{font-size:12.5px;}
+  .axlabel{fill:rgba(230,237,240,.5);font-size:10px;font-family:ui-sans-serif,system-ui;}
+  .gridline{stroke:rgba(30,58,69,.85);stroke-width:1;}
+  .zeroline{stroke:#1E3A45;stroke-width:1.6;}
+  .trunc{fill:#F2B03C;font-size:10.5px;font-weight:700;letter-spacing:.06em;font-family:ui-sans-serif,system-ui;}
+</style>
+</head>
+<body class="antialiased">
+<div class="mx-auto" style="max-width:1860px;padding:20px 24px 56px;">
+
+<!-- ======================= HEADER ======================= -->
+<header class="panel px-7 py-5 mb-5 flex items-center justify-between">
+  <div>
+    <div class="flex items-center gap-3">
+      <h1 class="text-[25px] font-bold tracking-tight">Strategy vs Buy &amp; Hold</h1>
+      <span class="pill pill-mute">QQQ · Same instrument, start date &amp; starting balance</span>
+    </div>
+    <p class="muted text-[12.5px] mt-1.5">
+      20/10 Donchian breakout at 10% sizing, measured against simply owning QQQ ·
+      <span id="hdr_range"></span> · <span id="hdr_bars"></span> daily bars
+    </p>
+    <p class="def mt-1">
+      Buy &amp; hold = purchase the instrument once on the first day and never trade again; the standard yardstick for whether an active strategy was worth running.
+    </p>
+  </div>
+  <div class="text-right">
+    <div class="src">DATA SOURCE</div>
+    <div class="text-[13px] font-semibold mt-0.5">Yahoo Finance via yfinance <span id="hdr_yf" class="muted font-normal"></span></div>
+    <div class="src mt-2">GENERATED</div>
+    <div class="text-[13px] font-semibold mt-0.5" id="hdr_gen"></div>
+  </div>
+</header>
+
+<!-- ======================= VERDICT ======================= -->
+<section class="panel mb-4 overflow-hidden" style="border-color:rgba(242,100,60,.5)">
+  <div class="px-7 py-5" style="background:rgba(242,100,60,.07)">
+    <div class="flex items-start gap-4">
+      <span class="pill pill-neg mt-0.5">Verdict · Buy &amp; hold wins</span>
+      <div class="flex-1">
+        <h2 class="text-[19px] font-bold" style="color:var(--neg)">
+          Buy &amp; hold beat the strategy on return, on compound growth, and on return earned per unit of drawdown. The strategy won on drawdown depth alone — and that win was bought, not earned.
+        </h2>
+        <p class="text-[13px] mt-2.5 leading-relaxed" style="opacity:.9">
+          Owning QQQ turned $100,000 into <span class="font-semibold" style="color:var(--pos)" id="v_bh"></span>.
+          The strategy turned the same $100,000 into <span class="font-semibold" id="v_a"></span>.
+          The strategy's drawdown was far shallower — <span class="font-semibold" id="v_dda"></span> against
+          <span class="font-semibold" id="v_ddb"></span> — but it earned only
+          <span class="font-semibold" id="v_r1"></span> of return per point of drawdown, against
+          <span class="font-semibold" style="color:var(--pos)" id="v_r2"></span> for buy &amp; hold.
+          Per unit of pain endured, buy &amp; hold paid roughly <span class="font-semibold" id="v_ratio"></span> times better.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= EXPOSURE WARNING ======================= -->
+<section class="panel mb-5 px-7 py-4" style="border-color:rgba(242,176,60,.5);background:rgba(242,176,60,.06)">
+  <div class="flex items-start gap-4">
+    <span class="pill pill-amber mt-0.5">Read this first · Not a like-for-like comparison</span>
+    <div class="flex-1">
+      <p class="text-[13px] leading-relaxed">
+        These two things do not carry the same risk. Buy &amp; hold is <span class="font-semibold">100% invested every single day</span>.
+        The strategy holds a 10% position and is in the market only <span class="font-semibold" id="x_exp"></span> of the time —
+        an average net exposure of about <span class="font-semibold" id="x_avg"></span>, roughly
+        <span class="font-semibold" id="x_mult"></span> less market risk. A large part of the return gap is simply that difference,
+        not a failure of the signal.
+      </p>
+      <p class="text-[13px] leading-relaxed mt-2">
+        That is why the <span class="font-semibold" style="color:var(--pos)">static 10% / 90% cash control</span> is carried through every
+        panel below. It holds the identical exposure to the strategy and makes no timing decisions, so it isolates the signal itself.
+        <span class="font-semibold" style="color:var(--neg)">The strategy loses to that control too</span>
+        (<span id="x_a"></span> against <span id="x_c"></span>), which is the finding that actually matters.
+      </p>
+      <p class="def mt-2">Net exposure = position size × share of days holding it; the average fraction of your money actually at risk in the market.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= KPI CARDS ======================= -->
+<div class="flex items-center justify-between mb-2.5">
+  <h3 class="text-[13px] font-bold tracking-[.1em] uppercase muted">The four requested metrics · Buy &amp; hold vs Strategy A</h3>
+  <span class="src">All figures computed in backtest.py from 6,921 daily bars at full daily resolution</span>
+</div>
+<section class="grid grid-cols-4 gap-4 mb-5" id="kpis"></section>
+
+<!-- ======================= MAIN COMPARISON TABLE ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Side-by-side comparison</h3>
+    <span class="pill pill-mute">Same instrument · same start date · same $100,000</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    Every series measured on exactly the same four metrics over exactly the same window, so nothing is hidden by a different yardstick.</p>
+  <p class="def mb-1">CAGR = the constant yearly growth rate that would turn the starting balance into the ending balance.</p>
+  <p class="def mb-1">Max drawdown = the deepest percentage fall from a previous account high; a measure of worst-case pain.</p>
+  <p class="def mb-4">Longest time underwater = the longest stretch between an account peak and the day that peak was finally regained.</p>
+  <table class="w-full">
+    <thead><tr>
+      <th class="text-left pb-2.5">Series</th>
+      <th class="text-right pb-2.5">Final balance</th>
+      <th class="text-right pb-2.5">Net return</th>
+      <th class="text-right pb-2.5">CAGR</th>
+      <th class="text-right pb-2.5">Max drawdown</th>
+      <th class="text-right pb-2.5">Longest underwater</th>
+      <th class="text-right pb-2.5">Return per point of drawdown</th>
+    </tr></thead>
+    <tbody id="cmp_rows"></tbody>
+  </table>
+  <p class="src mt-3">Source: backtest.py summarise() / bench_summary() / longest_underwater() · dividends credited as cash to every series alike (spec A2) · benchmarks bought on the strategy's first tradeable bar, <span id="cmp_firstsig"></span></p>
+</section>
+
+<!-- ======================= EQUITY ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Growth of $100,000 — true zero-based scale</h3>
+    <span class="pill pill-pos">Axis starts at zero</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+    All four series on one honest axis. The strategy is the near-flat line along the bottom; that is the correct visual impression.</p>
+  <svg id="c-equity" viewBox="0 0 1780 350" class="w-full" style="height:350px"></svg>
+  <p class="src mt-2">Source: backtest.py → results.json · chart downsampled to every 5th bar for file size; all statistics computed on full daily data</p>
+</section>
+
+<!-- ======================= DRAWDOWN + UNDERWATER ======================= -->
+<div class="grid grid-cols-2 gap-5 mb-5">
+  <section class="panel p-6">
+    <div class="flex items-start justify-between mb-1">
+      <h3 class="text-[15px] font-bold">Drawdown, overlaid</h3>
+      <span class="pill pill-pos">Strategy wins here</span>
+    </div>
+    <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+      How far below its previous peak each series sat on every day — the one dimension where the strategy clearly beats buy &amp; hold.</p>
+    <p class="def mb-3">The buy &amp; hold line reaching −83% means an investor who put in $100,000 saw it fall to about $17,000 before recovering.</p>
+    <svg id="c-dd" viewBox="0 0 860 260" class="w-full" style="height:260px"></svg>
+    <div class="mt-3 p-3 rounded" style="background:rgba(242,176,60,.08);border:1px solid rgba(242,176,60,.35)">
+      <span class="pill pill-amber">But the shallow drawdown was bought, not earned</span>
+      <p class="text-[12px] mt-2 leading-relaxed">
+        The strategy cannot fall far because it never risks more than 10% of the account. The static control, with identical
+        exposure and no signal at all, held its drawdown to <span class="font-semibold" id="dd_ctrl"></span> — most of the
+        strategy's apparent safety comes from position size, not from the timing rule.
+      </p>
+    </div>
+    <p class="src mt-2">Source: backtest.py drawdown_series() · full daily resolution</p>
+  </section>
+
+  <section class="panel p-6">
+    <div class="flex items-start justify-between mb-1">
+      <h3 class="text-[15px] font-bold">Longest time underwater</h3>
+      <span class="pill pill-neg">Barely better</span>
+    </div>
+    <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+      The longest unbroken wait before each series regained a previous peak — the duration of pain, as opposed to its depth.</p>
+    <p class="def mb-3">A strategy that cuts drawdown depth but not its duration has not actually made the experience much easier to live through.</p>
+    <svg id="c-uw" viewBox="0 0 860 260" class="w-full" style="height:260px"></svg>
+    <div class="mt-3 p-3 rounded" style="background:rgba(242,100,60,.07);border:1px solid rgba(242,100,60,.32)">
+      <span class="pill pill-neg">The protection did not shorten the wait</span>
+      <p class="text-[12px] mt-2 leading-relaxed">
+        The strategy spent <span class="font-semibold" id="uw_a"></span> below its January 2000 peak.
+        Buy &amp; hold spent <span class="font-semibold" id="uw_b"></span> below its March 2000 peak.
+        Cutting drawdown depth by a factor of twelve shortened the wait by only about
+        <span class="font-semibold" id="uw_diff"></span>.
+      </p>
+    </div>
+    <p class="src mt-2">Source: backtest.py longest_underwater() · measured in calendar days between peak and recovery</p>
+  </section>
+</div>
+
+<!-- ======================= RETURN PER DRAWDOWN ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Was the lower risk worth it?</h3>
+    <span class="pill pill-neg">No</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    How much return each series delivered for every single percentage point of drawdown it made you suffer.</p>
+  <p class="def mb-4">Return per point of drawdown = net return ÷ max drawdown. A crude but hard-to-game way to ask whether the pain was compensated. Higher is better.</p>
+  <div class="grid grid-cols-3 gap-5">
+    <div class="col-span-2"><svg id="c-ratio" viewBox="0 0 1140 230" class="w-full" style="height:230px"></svg></div>
+    <div class="p-4 rounded" style="background:rgba(242,100,60,.07);border:1px solid rgba(242,100,60,.32)">
+      <span class="pill pill-neg">The defence fails</span>
+      <p class="text-[12px] mt-2.5 leading-relaxed">
+        The natural defence of a low-return strategy is that it took less risk. That defence does not survive this test.
+        Buy &amp; hold produced <span class="font-semibold" id="r_bh"></span> of return per point of drawdown; the strategy produced
+        <span class="font-semibold" style="color:var(--neg)" id="r_a"></span>. Even the do-nothing control at identical exposure
+        produced <span class="font-semibold" id="r_c"></span>.
+      </p>
+      <p class="text-[12px] mt-2.5 leading-relaxed">
+        The strategy did not trade return for safety at a fair price. It gave up return <em>and</em> delivered a worse rate of
+        compensation for the risk it did take.
+      </p>
+      <p class="def mt-3">This ratio ignores the shape and timing of losses, so treat it as a blunt sanity check rather than a formal risk measure.</p>
+    </div>
+  </div>
+  <p class="src mt-3">Source: computed from results.json net_return_pct ÷ |max_drawdown_pct| for each series</p>
+</section>
+
+<!-- ======================= YEARLY ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Year by year — when did the strategy actually help?</h3>
+    <span class="pill pill-amber">The one genuine strength</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    Calendar-year returns side by side, revealing that the strategy's value was concentrated entirely in falling markets.</p>
+  <p class="def mb-3">Each year is measured from the previous year-end balance; the first year is measured from the $100,000 starting balance.</p>
+  <svg id="c-yearly" viewBox="0 0 1780 300" class="w-full" style="height:300px"></svg>
+  <div class="grid grid-cols-3 gap-5 mt-4">
+    <div class="p-4 rounded" style="background:rgba(55,240,131,.06);border:1px solid rgba(55,240,131,.3)">
+      <span class="pill pill-pos">Genuine finding</span>
+      <p class="text-[12px] mt-2.5 leading-relaxed">
+        In the six calendar years QQQ fell, the strategy beat the do-nothing control in five of them. In 2022 it lost
+        <span class="font-semibold">1.29%</span> while the control lost <span class="font-semibold">14.19%</span> and buy &amp; hold lost
+        <span class="font-semibold">31.35%</span>. The exit rule does genuinely get out of the way of sustained declines.
+      </p>
+    </div>
+    <div class="p-4 rounded" style="background:rgba(242,100,60,.07);border:1px solid rgba(242,100,60,.32)">
+      <span class="pill pill-neg">But the cost was ruinous</span>
+      <p class="text-[12px] mt-2.5 leading-relaxed">
+        It beat the control in only <span class="font-semibold" id="y_wins"></span> of 28 years. In strong bull years it gave up
+        5 to 16 percentage points at a stretch — 2023 alone cost 16.2 points against the control. Twenty-two years of lagging
+        buys six years of cushioning.
+      </p>
+    </div>
+    <div class="p-4 rounded" style="background:rgba(242,176,60,.07);border:1px solid rgba(242,176,60,.3)">
+      <span class="pill pill-amber">How to read this honestly</span>
+      <p class="text-[12px] mt-2.5 leading-relaxed">
+        A rule that only pays in falling markets is an insurance policy, not a growth engine. Judged as insurance the question is
+        whether the premium — 22 years of underperformance — was worth the payout. Over this history, measured against the control,
+        it was not.
+      </p>
+    </div>
+  </div>
+  <p class="src mt-3">Source: backtest.py yearly_table() · calendar-year returns off prior year-end balance</p>
+</section>
+
+<!-- ======================= START DATE SENSITIVITY ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Did the chosen start date rig the comparison?</h3>
+    <span class="pill pill-pos">No — checked</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+    A deliberate check that the benchmark's advantage is not an artifact of which day it was started on.</p>
+  <div class="grid grid-cols-2 gap-6">
+    <div>
+      <p class="text-[12.5px] leading-relaxed mb-3">
+        The strategy cannot trade until it has 20 bars of history, so its first possible trade is
+        <span class="font-semibold" id="s_first"></span>, not the first day of data. Buy &amp; hold was therefore started on that same
+        day rather than on the first bar available — the choice that is fairest to the strategy.
+      </p>
+      <p class="text-[12.5px] leading-relaxed">
+        Starting buy &amp; hold on the very first bar instead would have made it look <span class="font-semibold" id="s_delta"></span>
+        <em>better</em>. The alignment used throughout this report understates the benchmark, so the gap reported here is a
+        conservative one.
+      </p>
+      <p class="def mt-3">Warm-up period = the initial bars a strategy must observe before its rules can produce a signal; excluded from trading.</p>
+    </div>
+    <table class="w-full self-start">
+      <thead><tr>
+        <th class="text-left pb-2">Buy &amp; hold started on</th>
+        <th class="text-right pb-2">Net return</th>
+        <th class="text-right pb-2">CAGR</th>
+        <th class="text-right pb-2">Verdict</th>
+      </tr></thead>
+      <tbody id="s_rows"></tbody>
+    </table>
+  </div>
+  <p class="src mt-3">Source: backtest.py bench_100 vs bench_100_day1 · both $100,000, both dividends-as-cash</p>
+</section>
+
+<!-- ======================= ASSUMPTIONS ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Assumptions baked into this comparison</h3>
+    <span class="pill pill-amber">Every item below is a choice, not a fact</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-4"><b>WHAT THIS SHOWS —</b>
+    Each modelling decision that shapes the numbers above, and which side of the comparison it favours.</p>
+  <div class="grid grid-cols-3 gap-4" id="assumptions"></div>
+  <p class="src mt-3">Source: Strategy_Spec.md v3 §8 · assumption IDs match the spec document</p>
+</section>
+
+<!-- ======================= LIMITATIONS ======================= -->
+<section class="panel p-6 mb-5" style="border-color:rgba(242,100,60,.45)">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold" style="color:var(--neg)">Limitations — what this comparison cannot tell you</h3>
+    <span class="pill pill-neg">Required reading</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-4"><b>WHAT THIS SHOWS —</b>
+    The known ways this comparison could be misleading, incomplete, or inapplicable to a real decision.</p>
+  <div class="grid grid-cols-2 gap-x-8 gap-y-4" id="limitations"></div>
+  <p class="src mt-4">Source: analyst review of the executed run against Strategy_Spec.md v3 · this panel is mandatory and may not be empty</p>
+</section>
+
+<!-- ======================= METHOD ======================= -->
+<section class="panel p-6">
+  <h3 class="text-[15px] font-bold mb-1">Method &amp; provenance</h3>
+  <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b> Exactly how to reproduce every number on this page.</p>
+  <div class="grid grid-cols-4 gap-6 text-[12px] leading-relaxed">
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Buy &amp; hold construction</div>
+      <p>$100,000 into QQQ at the close of the strategy's first tradeable bar, held to the final bar. No rebalancing, no additions, no withdrawals. Dividends credited as cash on the ex-date, not reinvested — identical treatment to the strategy.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Control construction</div>
+      <p>$10,000 into QQQ on the same day (10% of the balance), $90,000 held as cash at 0%. Never traded again. Carries the strategy's exposure without any timing decision.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Prices</div>
+      <p>Yahoo raw OHLC with <code class="text-[11px]">auto_adjust=False</code> — split-adjusted, not dividend-adjusted, so all four fields share one scale. Verified: largest single-day close ratio in 27 years is 1.168×, with no ≈2.0× split gap.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Reproduce</div>
+      <p><code class="text-[11px]">.venv/Scripts/python.exe backtest.py</code> then <code class="text-[11px]">build_report.py</code>. Data snapshot in <code class="text-[11px]">qqq_raw.csv</code>; all figures in <code class="text-[11px]">results.json</code>.</p>
+    </div>
+  </div>
+  <p class="src mt-4" id="prov"></p>
+</section>
+
+</div>
+
+<script>
+const D = /*__DATA__*/;
+const F = {
+  money: v => (v<0?"-":"") + "$" + Math.abs(v).toLocaleString("en-US",{maximumFractionDigits:0}),
+  pct: (v,d=2) => (v>0?"+":"") + v.toFixed(d) + "%",
+  pctp:(v,d=2) => v.toFixed(d) + "%",
+  yrs: d => (d/365.25).toFixed(1) + " yrs",
+};
+const POS="#37F083", AMBER="#F2B03C", NEG="#F2643C", TEXT="#E6EDF0", BLUE="#6FA8BC", BORDER="#1E3A45";
+const A=D.A, B=D.B, C=D.bench_10, H=D.bench_100;
+const ratio = s => s.net_return_pct/Math.abs(s.max_drawdown_pct);
+
+/* header */
+hdr_range.textContent = D.meta.start_date+" → "+D.meta.end_date;
+hdr_bars.textContent  = D.meta.n_bars.toLocaleString();
+hdr_yf.textContent    = "v"+D.meta.yfinance_version;
+hdr_gen.textContent   = D.meta.generated;
+
+/* verdict */
+v_bh.textContent = F.money(H.final_equity)+" ("+F.pct(H.net_return_pct,0)+")";
+v_a.textContent  = F.money(A.final_equity)+" ("+F.pct(A.net_return_pct)+")";
+v_dda.textContent= F.pctp(A.max_drawdown_pct);
+v_ddb.textContent= F.pctp(H.max_drawdown_pct);
+v_r1.textContent = ratio(A).toFixed(2)+"%";
+v_r2.textContent = ratio(H).toFixed(2)+"%";
+v_ratio.textContent = (ratio(H)/ratio(A)).toFixed(1);
+
+/* exposure */
+const avgExp = D.meta.position_pct * D.meta.exposure_pct/100;
+x_exp.textContent  = D.meta.exposure_pct+"%";
+x_avg.textContent  = avgExp.toFixed(2)+"%";
+x_mult.textContent = (100/avgExp).toFixed(0)+"×";
+x_a.textContent    = F.pct(A.net_return_pct);
+x_c.textContent    = F.pct(C.net_return_pct);
+
+/* KPI cards */
+function card(o){return `<div class="panel p-5">
+  <div class="flex items-start justify-between gap-2">
+    <div class="text-[11px] tracking-[.08em] uppercase muted font-bold leading-tight">${o.label}</div>
+    <span class="pill ${o.pillClass}">${o.pill}</span></div>
+  <div class="kpi text-[31px] mt-2 leading-none" style="color:${o.color}">${o.value}</div>
+  <div class="text-[11.5px] mt-1.5" style="opacity:.8">vs strategy <span class="font-semibold" style="color:${o.vcolor}">${o.vs}</span></div>
+  <div class="def mt-1.5">${o.def}</div>
+  <div class="src mt-2">${o.src}</div></div>`;}
+kpis.innerHTML = [
+ card({label:"Net return · buy &amp; hold", value:F.pct(H.net_return_pct,0), color:POS,
+   pill:"Wins", pillClass:"pill-pos", vs:F.pct(A.net_return_pct)+" — behind by "+(H.net_return_pct-A.net_return_pct).toFixed(0)+" pp", vcolor:NEG,
+   def:"Total growth of the account from first to last day, not annualised.", src:"backtest.py bench_summary()"}),
+ card({label:"CAGR · buy &amp; hold", value:F.pct(H.cagr_pct), color:POS,
+   pill:"Wins", pillClass:"pill-pos", vs:F.pct(A.cagr_pct,3)+" — behind by "+(H.cagr_pct-A.cagr_pct).toFixed(2)+" pp/yr", vcolor:NEG,
+   def:"Compound annual growth rate over the same 27.5-year window.", src:"backtest.py bench_summary()"}),
+ card({label:"Max drawdown · buy &amp; hold", value:F.pctp(H.max_drawdown_pct), color:NEG,
+   pill:"Loses", pillClass:"pill-neg", vs:F.pctp(A.max_drawdown_pct)+" — strategy far shallower", vcolor:POS,
+   def:"$100,000 fell to roughly "+F.money(100000*(1+H.max_drawdown_pct/100))+" at the "+H.max_drawdown_date+" trough before recovering.", src:"backtest.py max_drawdown()"}),
+ card({label:"Longest underwater · buy &amp; hold", value:F.yrs(H.underwater.calendar_days), color:NEG,
+   pill:"Loses narrowly", pillClass:"pill-amber", vs:F.yrs(A.underwater.calendar_days)+" — only "+((H.underwater.calendar_days-A.underwater.calendar_days)/365.25).toFixed(1)+" yrs shorter", vcolor:AMBER,
+   def:"Time spent below a previous peak — depth differs hugely, duration barely at all.", src:"backtest.py longest_underwater()"}),
+].join("");
+
+/* comparison table */
+(function(){
+  const rows=[
+    {s:H, n:"Buy &amp; hold QQQ 100%",      c:BLUE,  note:"100% invested every day"},
+    {s:C, n:"Static 10% / 90% cash",        c:POS,   note:"the like-for-like control"},
+    {s:A, n:"Strategy A · frictionless",    c:AMBER, note:"120 trades, no costs"},
+    {s:B, n:"Strategy B · with costs",      c:NEG,   note:"120 trades, 0.05% + 1 tick"},
+  ];
+  const best={ret:Math.max(...rows.map(r=>r.s.net_return_pct)),
+              dd:Math.max(...rows.map(r=>r.s.max_drawdown_pct)),
+              uw:Math.min(...rows.map(r=>r.s.underwater.calendar_days)),
+              ra:Math.max(...rows.map(r=>ratio(r.s)))};
+  cmp_rows.innerHTML = rows.map(r=>{
+    const s=r.s, isB=v=>v?"font-weight:700":"";
+    return `<tr style="border-top:1px solid rgba(30,58,69,.7)">
+      <td class="py-2.5">
+        <div class="flex items-center gap-2.5">
+          <span style="width:9px;height:9px;border-radius:2px;background:${r.c};display:inline-block"></span>
+          <span class="font-semibold">${r.n}</span></div>
+        <div class="src mt-0.5" style="padding-left:19px">${r.note}</div></td>
+      <td class="py-2.5 text-right">${F.money(s.final_equity)}</td>
+      <td class="py-2.5 text-right" style="color:${s.net_return_pct===best.ret?POS:TEXT};${isB(s.net_return_pct===best.ret)}">${F.pct(s.net_return_pct)}</td>
+      <td class="py-2.5 text-right" style="color:${s.cagr_pct===Math.max(...rows.map(x=>x.s.cagr_pct))?POS:TEXT}">${F.pct(s.cagr_pct)}</td>
+      <td class="py-2.5 text-right" style="color:${s.max_drawdown_pct===best.dd?POS:NEG};${isB(s.max_drawdown_pct===best.dd)}">${F.pctp(s.max_drawdown_pct)}</td>
+      <td class="py-2.5 text-right" style="color:${s.underwater.calendar_days===best.uw?POS:TEXT}">
+        ${F.yrs(s.underwater.calendar_days)}
+        <div class="src">${s.underwater.calendar_days.toLocaleString()} d · ${s.underwater.start} → ${s.underwater.end}</div></td>
+      <td class="py-2.5 text-right" style="color:${ratio(s)===best.ra?POS:NEG};${isB(ratio(s)===best.ra)}">${ratio(s).toFixed(2)}%</td></tr>`;
+  }).join("");
+  cmp_firstsig.textContent = D.meta.first_signal_date;
+})();
+
+/* ---- chart helpers ---- */
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));return Math.ceil(v/p*2)/2*p;}
+function lineChart(id,o){
+  const svg=document.getElementById(id),W=o.W,H_=o.H,L=o.L||72,R=o.R||250,T=18,Bm=34;
+  const pw=W-L-R,ph=H_-T-Bm,yMin=o.yMin||0;
+  const yMax=o.yMax!==undefined?o.yMax:niceMax(Math.max(...o.series.flatMap(s=>s.data)));
+  const n=o.labels.length,X=i=>L+(i/(n-1))*pw,Y=v=>T+ph-((v-yMin)/(yMax-yMin))*ph;
+  let out="";
+  for(let k=0;k<=5;k++){const v=yMin+(yMax-yMin)*k/5,y=Y(v);
+    out+=`<line class="${v===0?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${o.fmtY(v)}</text>`;}
+  const st=Math.max(1,Math.floor(n/14));
+  for(let i=0;i<n;i+=st) out+=`<text class="axlabel" x="${X(i)}" y="${T+ph+18}" text-anchor="middle">${o.labels[i].slice(0,4)}</text>`;
+  o.series.forEach(s=>{const d=s.data.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+    out+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w||2}" stroke-linejoin="round" ${s.dash?`stroke-dasharray="${s.dash}"`:""}/>`;});
+  o.series.forEach((s,k)=>{const ly=T+16+k*24;
+    out+=`<line x1="${L+pw+16}" y1="${ly}" x2="${L+pw+38}" y2="${ly}" stroke="${s.color}" stroke-width="2.6" ${s.dash?`stroke-dasharray="${s.dash}"`:""}/>`;
+    out+=`<text class="axlabel" x="${L+pw+45}" y="${ly+3.5}" style="fill:${TEXT};opacity:.88">${s.name}</text>`;
+    out+=`<text class="axlabel" x="${L+pw+45}" y="${ly+15}">${s.note||""}</text>`;});
+  svg.innerHTML=out;
+}
+const CH=D.chart;
+lineChart("c-equity",{W:1780,H:350,labels:CH.dates,fmtY:v=>"$"+(v/1000).toFixed(0)+"k",series:[
+  {name:"Buy & hold QQQ 100%",color:BLUE,data:CH.bench_100,note:F.pct(H.net_return_pct,0)+" · "+F.money(H.final_equity)},
+  {name:"Static 10% / 90% cash (control)",color:POS,data:CH.bench_10,note:F.pct(C.net_return_pct,0)+" · "+F.money(C.final_equity)},
+  {name:"Strategy A · frictionless",color:AMBER,data:CH.equity_A,note:F.pct(A.net_return_pct)+" · "+F.money(A.final_equity)},
+  {name:"Strategy B · with costs",color:NEG,dash:"4 3",w:1.8,data:CH.equity_B,note:F.pct(B.net_return_pct)+" · "+F.money(B.final_equity)},
+]});
+
+/* drawdown overlay */
+(function(){
+  const W=860,H_=260,L=54,R=16,T=30,Bm=30,pw=W-L-R,ph=H_-T-Bm;
+  const yMin=-90,n=CH.dates.length,X=i=>L+(i/(n-1))*pw,Y=v=>T+((0-v)/(0-yMin))*ph;
+  let out="";
+  for(let k=0;k<=6;k++){const v=yMin*k/6,y=Y(v);
+    out+=`<line class="${v===0?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${v.toFixed(0)}%</text>`;}
+  const st=Math.floor(n/10);
+  for(let i=0;i<n;i+=st) out+=`<text class="axlabel" x="${X(i)}" y="${T+ph+17}" text-anchor="middle">${CH.dates[i].slice(0,4)}</text>`;
+  const area=(d,c,f)=>{const p=d.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+    return `<path d="${p} L${X(n-1)} ${Y(0)} L${X(0)} ${Y(0)} Z" fill="${f}" stroke="${c}" stroke-width="1.2"/>`;};
+  out+=area(CH.dd_bench_100,BLUE,"rgba(111,168,188,.20)");
+  out+=area(CH.dd_bench_10,POS,"rgba(55,240,131,.16)");
+  out+=area(CH.dd_A,AMBER,"rgba(242,176,60,.22)");
+  out+=`<text class="axlabel" x="${L+4}" y="${T-16}" style="fill:${TEXT};opacity:.8">Drawdown from previous peak · axis anchored at 0%</text>`;
+  [["Buy & hold",BLUE,H.max_drawdown_pct],["Control",POS,C.max_drawdown_pct],["Strategy A",AMBER,A.max_drawdown_pct]]
+    .forEach(([nm,c,v],k)=>{const x=L+8+k*175;
+      out+=`<rect x="${x}" y="${T+6}" width="9" height="9" fill="${c}"/>`;
+      out+=`<text class="axlabel" x="${x+14}" y="${T+14.5}" style="fill:${TEXT};opacity:.85">${nm} ${v.toFixed(1)}%</text>`;});
+  document.getElementById("c-dd").innerHTML=out;
+  dd_ctrl.textContent=F.pctp(C.max_drawdown_pct);
+})();
+
+/* underwater bars */
+(function(){
+  const rows=[{n:"Buy & hold QQQ 100%",v:H.underwater.calendar_days,c:BLUE},
+              {n:"Static 10% / 90% cash",v:C.underwater.calendar_days,c:POS},
+              {n:"Strategy B · with costs",v:B.underwater.calendar_days,c:NEG},
+              {n:"Strategy A · frictionless",v:A.underwater.calendar_days,c:AMBER}];
+  const W=860,H_=260,L=200,R=95,T=34,Bm=32,pw=W-L-R,ph=H_-T-Bm,max=6000;
+  let out="";
+  for(let k=0;k<=4;k++){const v=max*k/4,x=L+(v/max)*pw;
+    out+=`<line class="${k===0?'zeroline':'gridline'}" x1="${x}" y1="${T}" x2="${x}" y2="${T+ph}"/>`;
+    out+=`<text class="axlabel" x="${x}" y="${T+ph+17}" text-anchor="middle">${(v/365.25).toFixed(0)} yr</text>`;}
+  const bh=ph/rows.length;
+  rows.forEach((r,i)=>{const y=T+i*bh+bh*.24,h=bh*.52,w=(r.v/max)*pw;
+    out+=`<rect x="${L}" y="${y}" width="${w}" height="${h}" fill="${r.c}" opacity=".85" rx="2"/>`;
+    out+=`<text class="axlabel" x="${L-10}" y="${y+h/2+4}" text-anchor="end" style="fill:${TEXT};opacity:.9">${r.n}</text>`;
+    out+=`<text class="axlabel" x="${L+w+8}" y="${y+h/2+4}" style="fill:${r.c};font-weight:700">${(r.v/365.25).toFixed(1)} yrs</text>`;});
+  out+=`<text class="axlabel" x="${L}" y="${T-14}" style="fill:${TEXT};opacity:.75">Longest unbroken stretch below a previous peak · axis starts at zero</text>`;
+  document.getElementById("c-uw").innerHTML=out;
+  uw_a.textContent=F.yrs(A.underwater.calendar_days);
+  uw_b.textContent=F.yrs(H.underwater.calendar_days);
+  uw_diff.textContent=((H.underwater.calendar_days-A.underwater.calendar_days)/365.25).toFixed(1)+" years";
+})();
+
+/* ratio bars */
+(function(){
+  const rows=[{n:"Buy & hold QQQ 100%",v:ratio(H),c:BLUE},
+              {n:"Static 10% / 90% cash (control)",v:ratio(C),c:POS},
+              {n:"Strategy A · frictionless",v:ratio(A),c:AMBER},
+              {n:"Strategy B · with costs",v:ratio(B),c:NEG}];
+  const W=1140,H_=230,L=280,R=110,T=30,Bm=32,pw=W-L-R,ph=H_-T-Bm,max=niceMax(Math.max(...rows.map(r=>r.v)));
+  let out="";
+  for(let k=0;k<=5;k++){const v=max*k/5,x=L+(v/max)*pw;
+    out+=`<line class="${k===0?'zeroline':'gridline'}" x1="${x}" y1="${T}" x2="${x}" y2="${T+ph}"/>`;
+    out+=`<text class="axlabel" x="${x}" y="${T+ph+17}" text-anchor="middle">${v.toFixed(0)}%</text>`;}
+  const bh=ph/rows.length;
+  rows.forEach((r,i)=>{const y=T+i*bh+bh*.24,h=bh*.52,w=(r.v/max)*pw;
+    out+=`<rect x="${L}" y="${y}" width="${w}" height="${h}" fill="${r.c}" opacity=".85" rx="2"/>`;
+    out+=`<text class="axlabel" x="${L-10}" y="${y+h/2+4}" text-anchor="end" style="fill:${TEXT};opacity:.9">${r.n}</text>`;
+    out+=`<text class="axlabel" x="${L+w+8}" y="${y+h/2+4}" style="fill:${r.c};font-weight:700">${r.v.toFixed(2)}%</text>`;});
+  out+=`<text class="axlabel" x="${L}" y="${T-13}" style="fill:${TEXT};opacity:.75">Net return earned per 1 percentage point of max drawdown · higher is better · axis starts at zero</text>`;
+  document.getElementById("c-ratio").innerHTML=out;
+  r_bh.textContent=ratio(H).toFixed(2)+"%"; r_a.textContent=ratio(A).toFixed(2)+"%"; r_c.textContent=ratio(C).toFixed(2)+"%";
+})();
+
+/* yearly grouped bars */
+(function(){
+  const Y_=D.yearly, yrs=Y_.years, g=(k,y)=>Y_[k][String(y)];
+  const W=1780,H_=300,L=64,R=24,T=42,Bm=40,pw=W-L-R,ph=H_-T-Bm;
+  const vals=yrs.flatMap(y=>[g("A",y),g("bench_100",y),g("bench_10",y)]);
+  const top=niceMax(Math.max(...vals)),bot=-niceMax(Math.abs(Math.min(...vals)));
+  const Y=v=>T+((top-v)/(top-bot))*ph,gw=pw/yrs.length;
+  let out="";
+  for(let k=0;k<=6;k++){const v=top-(top-bot)*k/6,y=Y(v);
+    out+=`<line class="${Math.abs(v)<.01?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${v.toFixed(0)}%</text>`;}
+  yrs.forEach((yr,i)=>{
+    const x0=L+i*gw, bw=gw*.27;
+    [[g("bench_100",yr),BLUE,0],[g("bench_10",yr),POS,1],[g("A",yr),AMBER,2]].forEach(([v,c,k])=>{
+      const x=x0+gw*.06+k*bw, y=Y(Math.max(v,0)), h=Math.abs(Y(v)-Y(0));
+      out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-1).toFixed(1)}" height="${Math.max(h,.8).toFixed(1)}" fill="${c}" opacity=".88" rx="1"/>`;});
+    if(g("bench_100",yr)<0) out+=`<rect x="${x0}" y="${T}" width="${gw}" height="${ph}" fill="rgba(242,100,60,.07)"/>`;
+    out+=`<text class="axlabel" x="${x0+gw/2}" y="${T+ph+16}" text-anchor="middle" style="font-size:9px">${String(yr).slice(2)}</text>`;});
+  out+=`<line class="zeroline" x1="${L}" y1="${Y(0)}" x2="${L+pw}" y2="${Y(0)}" stroke="${BORDER}" stroke-width="1.8"/>`;
+  [["Buy & hold 100%",BLUE],["Static 10% control",POS],["Strategy A",AMBER]].forEach(([nm,c],k)=>{
+    const x=L+k*190; out+=`<rect x="${x}" y="${T-30}" width="10" height="10" fill="${c}"/>`;
+    out+=`<text class="axlabel" x="${x+15}" y="${T-21}" style="fill:${TEXT};opacity:.85">${nm}</text>`;});
+  out+=`<text class="axlabel" x="${L+pw}" y="${T-21}" text-anchor="end">shaded columns = years QQQ fell · axis crosses at zero</text>`;
+  document.getElementById("c-yearly").innerHTML=out;
+  y_wins.textContent = yrs.filter(y=>g("A",y)>g("bench_10",y)).length;
+})();
+
+/* start-date sensitivity */
+(function(){
+  const d1=D.bench_100_day1;
+  s_first.textContent = D.meta.first_signal_date;
+  s_delta.textContent = (d1.net_return_pct-H.net_return_pct).toFixed(0)+" percentage points";
+  s_rows.innerHTML=[
+    {n:D.meta.first_signal_date+" — strategy's first tradeable bar",s:H,v:"Used throughout this report",c:POS},
+    {n:D.meta.start_date+" — first bar of available history",s:d1,v:"Would flatter the benchmark further",c:AMBER},
+  ].map(r=>`<tr style="border-top:1px solid rgba(30,58,69,.7)">
+    <td class="py-2.5">${r.n}</td>
+    <td class="py-2.5 text-right font-semibold">${F.pct(r.s.net_return_pct,0)}</td>
+    <td class="py-2.5 text-right">${F.pct(r.s.cagr_pct)}</td>
+    <td class="py-2.5 text-right" style="color:${r.c}">${r.v}</td></tr>`).join("");
+})();
+
+/* assumptions */
+(function(){
+  const A_=[
+   {id:"A14",t:"Idle cash earns 0%",b:"Affects the strategy and the control far more than buy &amp; hold, which holds almost no cash. Crediting a real Treasury-bill rate would narrow the gap shown here materially — this assumption makes buy &amp; hold look better than a fully-modelled comparison would.",d:"bends: against the strategy"},
+   {id:"A2",t:"Dividends paid as cash, not reinvested",b:"Applied identically to all four series. Because buy &amp; hold holds ten times the shares, it forgoes the most compounding from this choice — reinvesting dividends would widen buy &amp; hold's lead further.",d:"bends: against buy &amp; hold"},
+   {id:"A15",t:"Benchmarks start on the strategy's first tradeable bar",b:"Buy &amp; hold is started 20 bars later than the data allows, so it misses the first month of 1999. Verified to cost the benchmark roughly 115 percentage points — the alignment chosen is the one least favourable to buy &amp; hold.",d:"bends: against buy &amp; hold"},
+   {id:"A16",t:"No taxes modelled",b:"Strongly favours the strategy in a taxable account. Its 28-bar average hold produces short-term gains taxed as ordinary income, while buy &amp; hold defers tax entirely for 27 years and would be taxed at long-term rates.",d:"bends: flatters the strategy"},
+   {id:"A5",t:"Fills at the signal bar's close",b:"Only the strategy transacts, so only the strategy benefits from idealised fills. Buy &amp; hold makes exactly one purchase and is essentially immune to execution assumptions.",d:"bends: flatters the strategy"},
+   {id:"A3",t:"Yahoo restates its own history",b:"Observed live: re-running this backtest moved the buy &amp; hold figure by about 0.8 percentage points while every strategy number stayed identical, because the benchmark holds far more shares and is more sensitive to a restated dividend.",d:"verified during this run"},
+  ];
+  assumptions.innerHTML=A_.map(a=>`<div class="p-4 rounded" style="background:rgba(242,176,60,.06);border:1px solid rgba(242,176,60,.3)">
+    <div class="flex items-start justify-between gap-2 mb-2">
+      <div class="text-[12.5px] font-bold">${a.t}</div><span class="pill pill-amber">Assumption ${a.id}</span></div>
+    <p class="text-[11.5px] leading-relaxed" style="opacity:.88">${a.b}</p>
+    <div class="src mt-2" style="color:var(--amber)">${a.d}</div></div>`).join("");
+})();
+
+/* limitations */
+(function(){
+  const L_=[
+   ["The exposure mismatch is the headline caveat","Buy &amp; hold runs 100% invested; the strategy averages under 5% net exposure. Most of the return gap is that difference, not signal quality. Any conclusion drawn from the buy &amp; hold column alone will be wrong — the static 10% control is the comparison that isolates the rule."],
+   ["One path through history proves very little","This is a single 27-year sequence for a single instrument at a single parameter pair. Buy &amp; hold's dominance here is partly the specific good fortune of the Nasdaq-100 over this window. A different asset or window could reverse the ranking."],
+   ["Buy &amp; hold's −82.96% drawdown is not survivable for most people","The arithmetic assumes an investor held through a fall from $100,000 to about $17,000 without selling, adding, or withdrawing. Very few real investors do. A benchmark nobody could actually sit through is a weak standard for 'what you should have done instead'."],
+   ["Return per point of drawdown is a blunt instrument","It ignores how long drawdowns lasted, how often they occurred, and the shape of the path. It is used here as a sanity check on the 'lower risk' defence, not as a formal risk-adjusted performance measure. Sharpe, Sortino and Ulcer would each rank these differently."],
+   ["Time underwater is measured on one peak only","The reported figure is the single longest stretch, not the typical experience. Both series spent many other periods below water that this metric does not summarise."],
+   ["The 0% cash assumption distorts the comparison asymmetrically","The strategy and the control are ≥90% cash; buy &amp; hold is ~0% cash. Assuming cash earns nothing therefore penalises the strategy far more than the benchmark. This is the single change most likely to narrow the gap, and it is not modelled here."],
+   ["No taxes, and the tax treatment differs sharply","Buy &amp; hold defers all capital gains for 27 years; the strategy realises short-term gains 120 times. In a taxable account the after-tax gap would be narrower than the pre-tax gap shown, though buy &amp; hold would still win comfortably."],
+   ["Yahoo Finance data is not audit-grade","Free retail data is retroactively restated and carries occasional bad ticks. A re-run during this session moved the benchmark figure slightly, which is disclosed above rather than smoothed over. The snapshot in qqq_raw.csv makes this run reproducible, not authoritative."],
+  ];
+  limitations.innerHTML=L_.map(([t,b])=>`<div class="flex gap-3">
+    <div class="mt-1.5 shrink-0" style="width:6px;height:6px;border-radius:99px;background:${NEG}"></div>
+    <div><div class="text-[12.5px] font-bold mb-1">${t}</div>
+    <p class="text-[11.8px] leading-relaxed" style="opacity:.86">${b}</p></div></div>`).join("");
+})();
+
+prov.textContent = `QQQ · ${D.meta.n_bars.toLocaleString()} daily bars · ${D.meta.start_date} → ${D.meta.end_date} · benchmarks bought ${D.meta.first_signal_date} at $${D.meta.start_equity.toLocaleString()} · `+
+ `strategy exposure ${D.meta.exposure_pct}% of ${D.meta.tradeable_bars.toLocaleString()} tradeable bars · ${D.meta.n_dividends} dividends from ${D.meta.first_dividend} · `+
+ `yfinance ${D.meta.yfinance_version}, pandas ${D.meta.pandas_version} · generated ${D.meta.generated}`;
+</script>
+</body>
+</html>

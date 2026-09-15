@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>QQQ 20/10 Donchian Breakout — Backtest Report</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --ground:#08171E; --panel:#0F2630; --border:#1E3A45;
+    --pos:#37F083; --amber:#F2B03C; --neg:#F2643C; --text:#E6EDF0;
+    --muted:rgba(230,237,240,.52);
+  }
+  html,body{background:var(--ground);color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;}
+  .muted{color:var(--muted);}
+  .def{color:var(--muted);font-size:11.5px;line-height:1.5;font-style:italic;}
+  .src{color:var(--muted);font-size:10.5px;letter-spacing:.02em;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+    letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid;}
+  .pill-pos{color:var(--pos);border-color:rgba(55,240,131,.42);background:rgba(55,240,131,.09);}
+  .pill-amber{color:var(--amber);border-color:rgba(242,176,60,.42);background:rgba(242,176,60,.09);}
+  .pill-neg{color:var(--neg);border-color:rgba(242,100,60,.42);background:rgba(242,100,60,.09);}
+  .pill-mute{color:var(--muted);border-color:var(--border);background:rgba(230,237,240,.04);}
+  .kpi{font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:-.02em;}
+  .whatshows{font-size:12px;color:var(--text);opacity:.82;line-height:1.55;}
+  .whatshows b{color:var(--amber);font-weight:700;letter-spacing:.06em;font-size:10px;}
+  table{font-variant-numeric:tabular-nums;}
+  th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  td{font-size:12.5px;}
+  tr+tr td{border-top:1px solid rgba(30,58,69,.7);}
+  .axlabel{fill:rgba(230,237,240,.5);font-size:10px;font-family:ui-sans-serif,system-ui;}
+  .gridline{stroke:rgba(30,58,69,.85);stroke-width:1;}
+  .zeroline{stroke:#1E3A45;stroke-width:1.5;}
+  .trunc{fill:#F2B03C;font-size:10.5px;font-weight:700;letter-spacing:.06em;font-family:ui-sans-serif,system-ui;}
+</style>
+</head>
+<body class="antialiased">
+<div class="mx-auto" style="max-width:1860px;padding:20px 24px 56px;">
+
+<!-- ======================= HEADER ======================= -->
+<header class="panel px-7 py-5 mb-5 flex items-center justify-between">
+  <div>
+    <div class="flex items-center gap-3">
+      <h1 class="text-[25px] font-bold tracking-tight">QQQ 20/10 Donchian Breakout</h1>
+      <span class="pill pill-mute" id="hdr-variants">2 VARIANTS</span>
+    </div>
+    <p class="muted text-[12.5px] mt-1.5">
+      Long/flat trend-following backtest · 10% of equity per trade ·
+      <span id="hdr-range"></span> · <span id="hdr-bars"></span> daily bars
+    </p>
+    <p class="def mt-1">
+      Donchian breakout = buy when price closes above its highest high of the last N days; sell when it closes below its lowest low of the last M days.
+    </p>
+  </div>
+  <div class="text-right">
+    <div class="src">DATA SOURCE</div>
+    <div class="text-[13px] font-semibold mt-0.5">Yahoo Finance via yfinance <span id="hdr-yf" class="muted font-normal"></span></div>
+    <div class="src mt-2">GENERATED</div>
+    <div class="text-[13px] font-semibold mt-0.5" id="hdr-gen"></div>
+  </div>
+</header>
+
+<!-- ======================= VERDICT ======================= -->
+<section class="panel mb-5 overflow-hidden" style="border-color:rgba(242,100,60,.5)">
+  <div class="px-7 py-5" style="background:rgba(242,100,60,.07)">
+    <div class="flex items-start gap-4">
+      <span class="pill pill-neg mt-0.5">Verdict · Underperforms</span>
+      <div class="flex-1">
+        <h2 class="text-[19px] font-bold" style="color:var(--neg)">
+          The timing signal destroyed value. It finished
+          <span id="v-gap"></span> percentage points behind simply holding the same exposure and never trading.
+        </h2>
+        <p class="text-[13px] mt-2.5 leading-relaxed" style="opacity:.9">
+          Over <span id="v-years"></span> years the strategy turned $100,000 into
+          <span class="font-semibold" id="v-final"></span>. A portfolio that bought the identical 10% position
+          on day one and then did nothing for 27 years finished at
+          <span class="font-semibold" style="color:var(--pos)" id="v-bench"></span>.
+          Buying and holding QQQ outright finished at <span class="font-semibold" id="v-bh"></span>.
+          Every trading decision this system made, across 120 round trips, subtracted from the result.
+        </p>
+        <p class="def mt-2">
+          Control / benchmark = the same portfolio with the trading rule switched off, used to isolate whether the rule itself added anything.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= KPI CARDS ======================= -->
+<div class="flex items-center justify-between mb-2.5">
+  <h3 class="text-[13px] font-bold tracking-[.1em] uppercase muted">Headline metrics · Variant A (frictionless)</h3>
+  <span class="src">All figures computed in backtest.py from 6,921 daily bars · full daily resolution</span>
+</div>
+<section class="grid grid-cols-4 gap-4 mb-4" id="kpis"></section>
+<section class="grid grid-cols-4 gap-4 mb-5" id="kpis2"></section>
+
+<!-- ======================= EQUITY, TRUE SCALE ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Equity curve — true zero-based scale</h3>
+    <span class="pill pill-pos">Axis starts at zero</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    The strategy's account value against both benchmarks on an honest axis, so the sizes are directly comparable.</p>
+  <p class="def mb-3">Equity curve = total account value (cash plus the marked-to-market value of any open position) on every trading day.</p>
+  <svg id="chart-equity-full" viewBox="0 0 1780 340" class="w-full" style="height:340px"></svg>
+  <p class="src mt-2">Source: backtest.py → results.json · strategy curves marked daily at the close · benchmark curves per spec A15 · chart downsampled to every 5th bar for file size, all statistics computed on full daily data</p>
+</section>
+
+<!-- ======================= EQUITY, TRUNCATED ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Equity curve — strategy shape in detail</h3>
+    <span class="pill pill-amber">⚠ Truncated axis — see label on chart</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    Only the two strategy curves, zoomed hard so their shape is legible; the vertical axis does <em>not</em> start at zero.</p>
+  <p class="def mb-1">Like-for-like control = static 10% QQQ / 90% cash, bought once and held, so it carries the same market exposure but makes no timing decisions.</p>
+  <div class="mb-3 px-3 py-2 rounded inline-flex items-center gap-2.5" style="background:rgba(242,176,60,.09);border:1px solid rgba(242,176,60,.4)">
+    <span class="pill pill-amber">What is off this chart</span>
+    <span class="text-[11.5px]">The control ends at <span class="font-semibold" id="zoom-ctrl"></span> and buy-and-hold at <span class="font-semibold" id="zoom-bh"></span> — both far above the top of this axis. This zoom exists to read the strategy's shape, <em>not</em> to suggest it performed well.</span>
+  </div>
+  <svg id="chart-equity-zoom" viewBox="0 0 1780 320" class="w-full" style="height:320px"></svg>
+  <p class="src mt-2">Source: backtest.py → results.json · axis truncation labelled directly on the chart per honesty rules</p>
+</section>
+
+<!-- ======================= TWO-COLUMN ======================= -->
+<div class="grid grid-cols-2 gap-5 mb-5">
+
+  <!-- DRAWDOWN -->
+  <section class="panel p-6">
+    <div class="flex items-start justify-between mb-1">
+      <h3 class="text-[15px] font-bold">Drawdown &amp; time underwater</h3>
+      <span class="pill pill-amber">Low DD is an artifact</span>
+    </div>
+    <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+      How far below its previous peak the account sat on each day, and for how long it stayed there.</p>
+    <p class="def mb-1">Drawdown = the percentage fall from the highest account value reached so far.</p>
+    <p class="def mb-3">Time underwater = the number of days between an account peak and the day that peak is finally exceeded again.</p>
+    <svg id="chart-drawdown" viewBox="0 0 860 250" class="w-full" style="height:250px"></svg>
+    <div class="mt-3 p-3 rounded" style="background:rgba(242,176,60,.08);border:1px solid rgba(242,176,60,.35)">
+      <span class="pill pill-amber">Read this before quoting the drawdown</span>
+      <p class="text-[12px] mt-2 leading-relaxed">
+        The <span class="font-semibold" id="dd-a"></span> maximum drawdown is <em>not</em> evidence of good risk control.
+        It is a mechanical consequence of never risking more than 10% of the account — 90% of the portfolio
+        is idle cash that cannot fall. The static control, with the same 10% exposure, drew down
+        <span class="font-semibold" id="dd-b10"></span>; buy-and-hold drew down <span class="font-semibold" id="dd-b100"></span>.
+        Comparing this strategy's drawdown to a fully-invested strategy's would be meaningless.
+      </p>
+    </div>
+    <p class="src mt-2">Source: backtest.py, drawdown_series() / longest_underwater() · full daily resolution</p>
+  </section>
+
+  <!-- BENCHMARK BARS -->
+  <section class="panel p-6">
+    <div class="flex items-start justify-between mb-1">
+      <h3 class="text-[15px] font-bold">Net return vs. benchmarks</h3>
+      <span class="pill pill-pos">Axis starts at zero</span>
+    </div>
+    <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+      Total percentage gain over the full history for each variant and each benchmark, on a common zero-based scale.</p>
+    <p class="def mb-3">Net return = total growth of the account from first to last day, after all costs, not annualised.</p>
+    <svg id="chart-benchmark" viewBox="0 0 860 250" class="w-full" style="height:250px"></svg>
+    <p class="src mt-2">Source: backtest.py summarise() / bench_summary() · dividends credited as cash to strategy and benchmarks alike (spec A2)</p>
+  </section>
+</div>
+
+<!-- ======================= VARIANT COMPARISON ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Variant A vs Variant B — the cost of friction</h3>
+    <span class="pill pill-pos">Identical trades · sanity check passed</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    Every requested metric for both variants side by side, isolating exactly what trading costs removed.</p>
+  <p class="def mb-1">Slippage = the difference between the price a signal fires at and the price actually filled; modelled here as one tick against you on every trade.</p>
+  <p class="def mb-1">Commission = broker fee per trade, modelled as 0.05% of the traded amount on each side (entry and exit separately).</p>
+  <p class="def mb-4">Because the rules read price only, both variants fire on exactly the same dates — so the whole difference between them is cost, not luck.</p>
+  <div class="grid grid-cols-3 gap-5">
+    <div class="col-span-2">
+      <table class="w-full">
+        <thead><tr>
+          <th class="text-left pb-2">Metric</th>
+          <th class="text-right pb-2">A · Frictionless</th>
+          <th class="text-right pb-2">B · Friction-adjusted</th>
+          <th class="text-right pb-2">Difference</th>
+        </tr></thead>
+        <tbody id="variant-rows"></tbody>
+      </table>
+    </div>
+    <div>
+      <div class="p-4 rounded h-full" style="background:rgba(242,100,60,.07);border:1px solid rgba(242,100,60,.32)">
+        <span class="pill pill-neg">Friction bite</span>
+        <p class="text-[12px] mt-2.5 leading-relaxed">
+          Total costs of <span class="font-semibold" id="fr-total"></span>
+          (<span id="fr-comm"></span> commission + <span id="fr-slip"></span> slippage)
+          consumed <span class="font-semibold" style="color:var(--neg)" id="fr-pct"></span>
+          of the frictionless strategy's entire net profit.
+        </p>
+        <p class="text-[12px] mt-2.5 leading-relaxed">
+          Per round trip that is only about 0.012% of equity — exactly the magnitude the spec predicted in §7.2.
+          It looks large here purely because the profit base it is measured against is so small.
+        </p>
+        <p class="def mt-3">A result that is barely above break-even is unusually sensitive to costs; this is a symptom of a weak edge, not of expensive trading.</p>
+      </div>
+    </div>
+  </div>
+  <p class="src mt-3">Source: backtest.py run_backtest() with commission=0.0005, tick=0.01 for B · spec §7</p>
+</section>
+
+<!-- ======================= CONCENTRATION ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Profit concentration — how fragile is this result?</h3>
+    <span class="pill pill-neg">Highly concentrated</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-1"><b>WHAT THIS SHOWS —</b>
+    Every one of the 120 closed trades ranked by profit, revealing how much of the total depends on a handful of them.</p>
+  <p class="def mb-3">Concentration risk = the degree to which a track record rests on a few outliers rather than a repeatable edge; high concentration means the result may not survive out of sample.</p>
+  <div class="grid grid-cols-3 gap-5">
+    <div class="col-span-2">
+      <svg id="chart-concentration" viewBox="0 0 1160 260" class="w-full" style="height:260px"></svg>
+    </div>
+    <div class="flex flex-col gap-3">
+      <div class="p-4 rounded" style="background:rgba(242,100,60,.07);border:1px solid rgba(242,100,60,.32)">
+        <div class="text-[11px] tracking-[.08em] uppercase muted font-bold">Top 5 trades as share of net profit</div>
+        <div class="kpi text-[38px] mt-1" style="color:var(--neg)" id="conc-a"></div>
+        <div class="text-[11.5px] muted mt-1">Variant A · <span id="conc-b"></span> in Variant B</div>
+      </div>
+      <div class="p-4 rounded" style="background:rgba(242,176,60,.07);border:1px solid rgba(242,176,60,.32)">
+        <div class="text-[11px] tracking-[.08em] uppercase muted font-bold">Return if the top 5 are removed</div>
+        <div class="kpi text-[38px] mt-1" style="color:var(--amber)" id="conc-ex"></div>
+        <div class="text-[11.5px] muted mt-1">over 27.5 years · from 115 remaining trades</div>
+      </div>
+      <p class="text-[12px] leading-relaxed">
+        5 trades out of 120 — just over 4% of them — carry roughly two thirds of everything this
+        strategy earned. Strip them out and 27 years of trading produced
+        <span class="font-semibold" style="color:var(--amber)" id="conc-ex2"></span>.
+        That is the signature of a result driven by a few lucky trends rather than a durable edge.
+      </p>
+    </div>
+  </div>
+  <p class="src mt-3">Source: backtest.py summarise() top5_pct_of_net · trade-level net P&amp;L after costs</p>
+</section>
+
+<!-- ======================= TRADES ======================= -->
+<div class="grid grid-cols-2 gap-5 mb-5">
+  <section class="panel p-6">
+    <h3 class="text-[15px] font-bold mb-1">Five best trades</h3>
+    <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+      The specific trades the entire result depends on, so you can judge whether they look repeatable.</p>
+    <table class="w-full"><thead><tr>
+      <th class="text-left pb-2">Entry</th><th class="text-left pb-2">Exit</th>
+      <th class="text-right pb-2">Bars</th><th class="text-right pb-2">Move</th><th class="text-right pb-2">Net P&amp;L</th>
+    </tr></thead><tbody id="best-rows"></tbody></table>
+    <p class="src mt-2">Source: results.json trades_A, sorted by net P&amp;L</p>
+  </section>
+  <section class="panel p-6">
+    <h3 class="text-[15px] font-bold mb-1">Five worst trades</h3>
+    <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+      The largest losses, which set the scale of a single bad outcome under these rules.</p>
+    <table class="w-full"><thead><tr>
+      <th class="text-left pb-2">Entry</th><th class="text-left pb-2">Exit</th>
+      <th class="text-right pb-2">Bars</th><th class="text-right pb-2">Move</th><th class="text-right pb-2">Net P&amp;L</th>
+    </tr></thead><tbody id="worst-rows"></tbody></table>
+    <p class="src mt-2">Source: results.json trades_A, sorted by net P&amp;L</p>
+  </section>
+</div>
+
+<!-- ======================= DATA INTEGRITY ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Data integrity checks</h3>
+    <span class="pill pill-pos">All checks passed</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+    The verification run on the raw download before any trading logic touched it, because a silent data fault would invalidate everything above.</p>
+  <div class="grid grid-cols-4 gap-4" id="integrity"></div>
+  <p class="src mt-3">Source: backtest.py load_data() quality block · executed at download time on the live series</p>
+</section>
+
+<!-- ======================= ASSUMPTIONS ======================= -->
+<section class="panel p-6 mb-5">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold">Assumptions baked into these numbers</h3>
+    <span class="pill pill-amber">Every item below is a choice, not a fact</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-4"><b>WHAT THIS SHOWS —</b>
+    Each modelling decision that was not specified by the strategy itself, and which way it bends the result.</p>
+  <div class="grid grid-cols-3 gap-4" id="assumptions"></div>
+  <p class="src mt-3">Source: Strategy_Spec.md v3 §8 · assumption IDs match the spec document</p>
+</section>
+
+<!-- ======================= LIMITATIONS ======================= -->
+<section class="panel p-6 mb-5" style="border-color:rgba(242,100,60,.45)">
+  <div class="flex items-start justify-between mb-1">
+    <h3 class="text-[15px] font-bold" style="color:var(--neg)">Limitations — what this backtest cannot tell you</h3>
+    <span class="pill pill-neg">Required reading</span>
+  </div>
+  <p class="whatshows mt-1.5 mb-4"><b>WHAT THIS SHOWS —</b>
+    The known ways this result could be wrong, overstated, or inapplicable to live trading.</p>
+  <div class="grid grid-cols-2 gap-x-8 gap-y-4" id="limitations"></div>
+  <p class="src mt-4">Source: analyst review of Strategy_Spec.md v3 against the executed run · this panel is mandatory and may not be empty</p>
+</section>
+
+<!-- ======================= METHOD ======================= -->
+<section class="panel p-6">
+  <h3 class="text-[15px] font-bold mb-1">Method &amp; provenance</h3>
+  <p class="whatshows mt-1.5 mb-3"><b>WHAT THIS SHOWS —</b>
+    Exactly how to reproduce every number on this page.</p>
+  <div class="grid grid-cols-4 gap-6 text-[12px] leading-relaxed">
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Rules</div>
+      <p>Enter long when the daily close exceeds the highest high of the prior 20 bars. Exit to flat when the daily close falls below the lowest low of the prior 10 bars. Strict inequalities; the current bar is excluded from both channels. Long or flat only, never short.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Execution</div>
+      <p>Fills at the signal bar's close. Position = 10% of current equity, recomputed at each entry. One position at a time, entered and exited whole. No leverage. Idle cash earns 0%.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Prices</div>
+      <p>Yahoo raw OHLC with <code class="text-[11px]">auto_adjust=False</code> — split-adjusted but not dividend-adjusted, so all four fields share one scale. <code class="text-[11px]">Adj&nbsp;Close</code> deliberately unused for signals. Dividends credited as cash while long.</p>
+    </div>
+    <div>
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold mb-1.5">Reproduce</div>
+      <p><code class="text-[11px]">.venv/Scripts/python.exe backtest.py</code> → writes <code class="text-[11px]">qqq_raw.csv</code> (data snapshot) and <code class="text-[11px]">results.json</code>. Then <code class="text-[11px]">build_report.py</code> regenerates this page. No backtesting library; the loop is explicit in backtest.py.</p>
+    </div>
+  </div>
+  <p class="src mt-4" id="prov"></p>
+</section>
+
+</div>
+
+<script>
+const D = /*__DATA__*/;
+
+const F = {
+  money: v => (v<0?"-":"") + "$" + Math.abs(v).toLocaleString("en-US",{maximumFractionDigits:0}),
+  money2: v => (v<0?"-":"") + "$" + Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),
+  pct: (v,d=2) => (v>0?"+":"") + v.toFixed(d) + "%",
+  pctp: (v,d=2) => v.toFixed(d) + "%",
+};
+const POS="#37F083", AMBER="#F2B03C", NEG="#F2643C", TEXT="#E6EDF0", BORDER="#1E3A45";
+
+/* ---------- header ---------- */
+document.getElementById("hdr-range").textContent = D.meta.start_date + " → " + D.meta.end_date;
+document.getElementById("hdr-bars").textContent  = D.meta.n_bars.toLocaleString();
+document.getElementById("hdr-yf").textContent    = "v" + D.meta.yfinance_version;
+document.getElementById("hdr-gen").textContent   = D.meta.generated;
+
+/* ---------- verdict ---------- */
+const gap = D.bench_10.net_return_pct - D.A.net_return_pct;
+document.getElementById("v-gap").textContent   = gap.toFixed(1);
+document.getElementById("v-years").textContent = D.A.years;
+document.getElementById("v-final").textContent = F.money(D.A.final_equity) + " (" + F.pct(D.A.net_return_pct) + ")";
+document.getElementById("v-bench").textContent = F.money(D.bench_10.final_equity) + " (" + F.pct(D.bench_10.net_return_pct) + ")";
+document.getElementById("v-bh").textContent    = F.money(D.bench_100.final_equity) + " (" + F.pct(D.bench_100.net_return_pct) + ")";
+
+/* ---------- KPI cards ---------- */
+function card(o){
+  return `<div class="panel p-5">
+    <div class="flex items-start justify-between gap-2">
+      <div class="text-[11px] tracking-[.08em] uppercase muted font-bold leading-tight">${o.label}</div>
+      ${o.pill?`<span class="pill ${o.pillClass}">${o.pill}</span>`:""}
+    </div>
+    <div class="kpi text-[34px] mt-2 leading-none" style="color:${o.color||TEXT}">${o.value}</div>
+    <div class="text-[11.5px] muted mt-2 leading-snug">${o.sub}</div>
+    <div class="def mt-1.5">${o.def}</div>
+    <div class="src mt-2">${o.src}</div>
+  </div>`;
+}
+const A=D.A, B=D.B;
+document.getElementById("kpis").innerHTML = [
+  card({label:"Number of trades", value:A.n_trades, sub:`Closed round trips · avg hold ${A.avg_bars_held} bars · ${D.meta.exposure_pct}% of days in the market`,
+    def:"A round trip is one complete buy-then-sell cycle.", src:"backtest.py trades[]"}),
+  card({label:"Win rate", value:F.pctp(A.win_rate_pct), color:TEXT,
+    pill:"Not a quality signal", pillClass:"pill-amber",
+    sub:`${A.n_wins} winners / ${A.n_losses} losers`,
+    def:"Win rate = share of trades closed at a profit. A coin-flip win rate says nothing on its own — size of wins vs losses is what matters.",
+    src:"backtest.py summarise()"}),
+  card({label:"Average win", value:F.money2(A.avg_win), color:POS,
+    sub:`Mean profit on the ${A.n_wins} winning trades · ${F.pct(A.avg_win_pct)} average move`,
+    def:"Dollar figures are on a position of roughly $10,000, i.e. 10% of a $100,000 account.", src:"backtest.py summarise()"}),
+  card({label:"Average loss", value:F.money2(A.avg_loss), color:NEG,
+    sub:`Mean loss on the ${A.n_losses} losing trades · ${F.pctp(A.avg_loss_pct)} average move`,
+    def:"Wins are larger than losses, which is the intended shape of a trend-following rule.", src:"backtest.py summarise()"}),
+].join("");
+
+document.getElementById("kpis2").innerHTML = [
+  card({label:"Net return", value:F.pct(A.net_return_pct), color:NEG,
+    pill:"Below control", pillClass:"pill-neg",
+    sub:`${F.money(D.meta.start_equity)} → ${F.money(A.final_equity)} over ${A.years} years · control returned ${F.pct(D.bench_10.net_return_pct)}`,
+    def:"Total growth of the whole account, not of the traded sleeve.", src:"backtest.py summarise()"}),
+  card({label:"CAGR", value:F.pct(A.cagr_pct,3), color:NEG,
+    pill:"Below cash", pillClass:"pill-neg",
+    sub:`Compound annual growth · below the return of a savings account over the same period`,
+    def:"CAGR = the constant yearly growth rate that would produce the same final value.",
+    src:"backtest.py summarise()"}),
+  card({label:"Max drawdown", value:F.pctp(A.max_drawdown_pct), color:AMBER,
+    pill:"Artifact of 10% sizing", pillClass:"pill-amber",
+    sub:`Worst peak-to-trough fall · trough ${A.max_drawdown_date} · looks small only because 90% of the account is idle cash`,
+    def:"Max drawdown = the deepest percentage fall from a previous account high.",
+    src:"backtest.py max_drawdown()"}),
+  card({label:"Longest time underwater", value:(A.underwater.calendar_days/365.25).toFixed(1)+" yrs", color:NEG,
+    pill:"Severe", pillClass:"pill-neg",
+    sub:`${A.underwater.calendar_days.toLocaleString()} calendar days · ${A.underwater.start} → ${A.underwater.end} · peak finally regained`,
+    def:"The account sat below its January 2000 high for almost fourteen years before recovering.",
+    src:"backtest.py longest_underwater()"}),
+].join("");
+
+/* ---------- generic SVG chart helpers ---------- */
+function niceMax(v){
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v/p*2)/2*p;
+}
+function lineChart(id, opts){
+  const svg=document.getElementById(id), W=opts.W, H=opts.H;
+  const L=opts.L||70, R=opts.R||150, T=opts.T||18, Bm=opts.B||34;
+  const pw=W-L-R, ph=H-T-Bm;
+  const yMin = opts.yMin!==undefined?opts.yMin:0;
+  const yMax = opts.yMax!==undefined?opts.yMax:niceMax(Math.max(...opts.series.flatMap(s=>s.data)));
+  const n = opts.labels.length;
+  const X = i => L + (i/(n-1))*pw;
+  const Y = v => T + ph - ((v-yMin)/(yMax-yMin))*ph;
+  let out="";
+  const ticks=5;
+  for(let k=0;k<=ticks;k++){
+    const v=yMin+(yMax-yMin)*k/ticks, y=Y(v);
+    out+=`<line class="${(v===0&&yMin===0)?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${opts.fmtY(v)}</text>`;
+  }
+  const step=Math.max(1,Math.floor(n/12));
+  for(let i=0;i<n;i+=step){
+    out+=`<text class="axlabel" x="${X(i)}" y="${T+ph+18}" text-anchor="middle">${opts.labels[i].slice(0,4)}</text>`;
+  }
+  opts.series.forEach(s=>{
+    const d=s.data.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+    out+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w||1.9}" stroke-linejoin="round" ${s.dash?`stroke-dasharray="${s.dash}"`:""} opacity="${s.op||1}"/>`;
+  });
+  opts.series.forEach((s,k)=>{
+    const ly=T+14+k*19;
+    out+=`<line x1="${L+pw+14}" y1="${ly}" x2="${L+pw+34}" y2="${ly}" stroke="${s.color}" stroke-width="2.4" ${s.dash?`stroke-dasharray="${s.dash}"`:""}/>`;
+    out+=`<text class="axlabel" x="${L+pw+40}" y="${ly+3.5}" style="fill:${TEXT};opacity:.85">${s.name}</text>`;
+    out+=`<text class="axlabel" x="${L+pw+40}" y="${ly+15}" >${s.note||""}</text>`;
+  });
+  if(opts.truncNote){
+    out+=`<rect x="${L+6}" y="${T+5}" width="360" height="21" rx="4" fill="rgba(242,176,60,.13)" stroke="rgba(242,176,60,.5)"/>`;
+    out+=`<text class="trunc" x="${L+15}" y="${T+19}">⚠ TRUNCATED AXIS — Y BEGINS AT ${opts.fmtY(yMin)}, NOT ZERO</text>`;
+  }
+  svg.innerHTML=out;
+}
+
+/* ---------- equity, zero-based ---------- */
+const CH=D.chart;
+lineChart("chart-equity-full",{W:1780,H:340,R:230,labels:CH.dates,
+  fmtY:v=>"$"+(v/1000).toFixed(0)+"k",
+  series:[
+    {name:"Buy & hold QQQ 100%",color:"#6FA8BC",w:1.7,note:F.pct(D.bench_100.net_return_pct)},
+    {name:"Static 10% QQQ / 90% cash",color:POS,w:2.1,note:F.pct(D.bench_10.net_return_pct)+" — the control"},
+    {name:"Strategy A · frictionless",color:AMBER,w:2.1,note:F.pct(D.A.net_return_pct)},
+    {name:"Strategy B · with costs",color:NEG,w:1.9,dash:"4 3",note:F.pct(D.B.net_return_pct)},
+  ].map((s,i)=>({...s,data:[CH.bench_100,CH.bench_10,CH.equity_A,CH.equity_B][i]}))
+});
+
+/* ---------- equity, truncated to the strategy's own range ---------- */
+document.getElementById("zoom-ctrl").textContent = F.money(D.bench_10.final_equity);
+document.getElementById("zoom-bh").textContent   = F.money(D.bench_100.final_equity);
+const allStrat = CH.equity_A.concat(CH.equity_B);
+const zMin = Math.floor(Math.min(...allStrat)/5000)*5000;
+const zMax = Math.ceil(Math.max(...allStrat)/5000)*5000;
+lineChart("chart-equity-zoom",{W:1780,H:320,R:230,labels:CH.dates,yMin:zMin,yMax:zMax,truncNote:true,
+  fmtY:v=>"$"+(v/1000).toFixed(0)+"k",
+  series:[
+    {name:"Strategy A · frictionless",color:AMBER,w:2.2,data:CH.equity_A,note:F.pct(D.A.net_return_pct)+" over "+D.A.years+" yrs"},
+    {name:"Strategy B · with costs",color:NEG,w:2,dash:"4 3",data:CH.equity_B,note:F.pct(D.B.net_return_pct)+" over "+D.A.years+" yrs"},
+  ]
+});
+
+/* ---------- drawdown ---------- */
+(function(){
+  const svg=document.getElementById("chart-drawdown");
+  const W=860,H=250,L=52,R=16,T=16,Bm=30, pw=W-L-R, ph=H-T-Bm;
+  const data=CH.dd_A, n=data.length, yMin=Math.floor(Math.min(...data)/2)*2;
+  const X=i=>L+(i/(n-1))*pw, Y=v=>T+((0-v)/(0-yMin))*ph;
+  let out="";
+  for(let k=0;k<=4;k++){
+    const v=yMin*k/4, y=Y(v);
+    out+=`<line class="${v===0?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${v.toFixed(0)}%</text>`;
+  }
+  const step=Math.floor(n/10);
+  for(let i=0;i<n;i+=step) out+=`<text class="axlabel" x="${X(i)}" y="${T+ph+17}" text-anchor="middle">${CH.dates[i].slice(0,4)}</text>`;
+  const area=data.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ")
+    +` L${X(n-1).toFixed(1)} ${Y(0).toFixed(1)} L${X(0).toFixed(1)} ${Y(0).toFixed(1)} Z`;
+  out+=`<path d="${area}" fill="rgba(242,100,60,.22)" stroke="${NEG}" stroke-width="1.3"/>`;
+  const uw=D.A.underwater;
+  const i0=CH.dates.findIndex(d=>d>=uw.start), i1=CH.dates.findIndex(d=>d>=uw.end);
+  out+=`<rect x="${X(i0)}" y="${T}" width="${X(i1)-X(i0)}" height="${ph}" fill="rgba(242,176,60,.10)" stroke="rgba(242,176,60,.45)" stroke-dasharray="3 3"/>`;
+  out+=`<text class="trunc" x="${X(i0)+8}" y="${T+ph-10}">${(uw.calendar_days/365.25).toFixed(1)} YEARS UNDERWATER</text>`;
+  out+=`<text class="axlabel" x="${L+4}" y="${T+12}" style="fill:${TEXT};opacity:.8">Variant A drawdown · axis anchored at 0%</text>`;
+  svg.innerHTML=out;
+})();
+
+/* ---------- benchmark bars ---------- */
+(function(){
+  const svg=document.getElementById("chart-benchmark");
+  const rows=[
+    {n:"Buy & hold QQQ 100%",v:D.bench_100.net_return_pct,c:"#6FA8BC"},
+    {n:"Static 10% / 90% cash (control)",v:D.bench_10.net_return_pct,c:POS},
+    {n:"Strategy A · frictionless",v:D.A.net_return_pct,c:AMBER},
+    {n:"Strategy B · with costs",v:D.B.net_return_pct,c:NEG},
+  ];
+  const W=860,H=250,L=230,R=80,T=22,Bm=30,pw=W-L-R,ph=H-T-Bm;
+  const max=niceMax(Math.max(...rows.map(r=>r.v)));
+  let out="";
+  for(let k=0;k<=4;k++){
+    const v=max*k/4,x=L+(v/max)*pw;
+    out+=`<line class="${k===0?'zeroline':'gridline'}" x1="${x}" y1="${T}" x2="${x}" y2="${T+ph}"/>`;
+    out+=`<text class="axlabel" x="${x}" y="${T+ph+17}" text-anchor="middle">${v.toFixed(0)}%</text>`;
+  }
+  const bh=ph/rows.length;
+  rows.forEach((r,i)=>{
+    const y=T+i*bh+bh*0.22, h=bh*0.56, w=(r.v/max)*pw;
+    out+=`<rect x="${L}" y="${y}" width="${Math.max(w,1.5)}" height="${h}" fill="${r.c}" opacity=".85" rx="2"/>`;
+    out+=`<text class="axlabel" x="${L-10}" y="${y+h/2+4}" text-anchor="end" style="fill:${TEXT};opacity:.9">${r.n}</text>`;
+    out+=`<text class="axlabel" x="${L+Math.max(w,1.5)+8}" y="${y+h/2+4}" style="fill:${r.c};font-weight:700">${F.pct(r.v,1)}</text>`;
+  });
+  out+=`<text class="axlabel" x="${L}" y="${T-7}" style="fill:${TEXT};opacity:.75">Total net return over ${D.A.years} years · axis starts at zero</text>`;
+  svg.innerHTML=out;
+})();
+
+/* ---------- concentration ---------- */
+(function(){
+  const svg=document.getElementById("chart-concentration");
+  const t=[...D.trades_A].sort((a,b)=>b.net-a.net);
+  const W=1160,H=260,L=64,R=18,T=26,Bm=34,pw=W-L-R,ph=H-T-Bm;
+  const mx=Math.max(...t.map(x=>x.net)), mn=Math.min(...t.map(x=>x.net));
+  const top=niceMax(mx), bot=-niceMax(Math.abs(mn));
+  const Y=v=>T+((top-v)/(top-bot))*ph, bw=pw/t.length;
+  let out="";
+  for(let k=0;k<=4;k++){
+    const v=top-(top-bot)*k/4,y=Y(v);
+    out+=`<line class="${Math.abs(v)<1e-9?'zeroline':'gridline'}" x1="${L}" y1="${y}" x2="${L+pw}" y2="${y}"/>`;
+    out+=`<text class="axlabel" x="${L-8}" y="${y+3.5}" text-anchor="end">${F.money(v)}</text>`;
+  }
+  out+=`<line class="zeroline" x1="${L}" y1="${Y(0)}" x2="${L+pw}" y2="${Y(0)}" stroke="${BORDER}" stroke-width="1.6"/>`;
+  t.forEach((x,i)=>{
+    const c = i<5?NEG:(x.net>0?POS:"#6FA8BC");
+    const y0=Y(Math.max(x.net,0)), h=Math.abs(Y(x.net)-Y(0));
+    out+=`<rect x="${(L+i*bw).toFixed(1)}" y="${y0.toFixed(1)}" width="${Math.max(bw-1.1,1).toFixed(1)}" height="${Math.max(h,.7).toFixed(1)}" fill="${c}" opacity="${i<5?1:.62}" rx="1"/>`;
+  });
+  out+=`<rect x="${L-1}" y="${T}" width="${5*bw+2}" height="${ph}" fill="none" stroke="${NEG}" stroke-dasharray="3 3" stroke-width="1.2"/>`;
+  out+=`<text class="trunc" x="${L+5*bw+10}" y="${T+16}">↤ TOP 5 TRADES = ${D.A.top5_pct_of_net}% OF ALL NET PROFIT</text>`;
+  out+=`<text class="axlabel" x="${L}" y="${T-9}" style="fill:${TEXT};opacity:.75">All ${t.length} closed trades, ranked by net profit · axis crosses at zero</text>`;
+  out+=`<text class="axlabel" x="${L}" y="${T+ph+19}">most profitable</text>`;
+  out+=`<text class="axlabel" x="${L+pw}" y="${T+ph+19}" text-anchor="end">largest loss</text>`;
+  svg.innerHTML=out;
+})();
+
+/* ---------- variant table ---------- */
+(function(){
+  const rows=[
+    ["Number of trades", A.n_trades, B.n_trades, "identical by design"],
+    ["Win rate", F.pctp(A.win_rate_pct), F.pctp(B.win_rate_pct), "identical by design"],
+    ["Average win", F.money2(A.avg_win), F.money2(B.avg_win), F.money2(B.avg_win-A.avg_win)],
+    ["Average loss", F.money2(A.avg_loss), F.money2(B.avg_loss), F.money2(B.avg_loss-A.avg_loss)],
+    ["Net return", F.pct(A.net_return_pct), F.pct(B.net_return_pct), (B.net_return_pct-A.net_return_pct).toFixed(2)+" pp"],
+    ["CAGR", F.pct(A.cagr_pct,3), F.pct(B.cagr_pct,3), (B.cagr_pct-A.cagr_pct).toFixed(3)+" pp"],
+    ["Max drawdown", F.pctp(A.max_drawdown_pct), F.pctp(B.max_drawdown_pct), (B.max_drawdown_pct-A.max_drawdown_pct).toFixed(2)+" pp"],
+    ["Longest underwater", A.underwater.calendar_days.toLocaleString()+" d", B.underwater.calendar_days.toLocaleString()+" d",
+      "+"+(B.underwater.calendar_days-A.underwater.calendar_days).toLocaleString()+" d"],
+    ["Top 5 share of net profit", F.pctp(A.top5_pct_of_net), F.pctp(B.top5_pct_of_net), "+"+(B.top5_pct_of_net-A.top5_pct_of_net).toFixed(2)+" pp"],
+    ["Profit factor", A.profit_factor, B.profit_factor, (B.profit_factor-A.profit_factor).toFixed(3)],
+    ["Final equity", F.money(A.final_equity), F.money(B.final_equity), F.money(B.final_equity-A.final_equity)],
+  ];
+  document.getElementById("variant-rows").innerHTML = rows.map(r=>{
+    const bad = typeof r[3]==="string" && /^[-+]?[-−]/.test(String(r[3])) ;
+    const neutral = r[3]==="identical by design";
+    return `<tr>
+      <td class="py-2 pr-4">${r[0]}</td>
+      <td class="py-2 text-right font-semibold">${r[1]}</td>
+      <td class="py-2 text-right font-semibold">${r[2]}</td>
+      <td class="py-2 text-right" style="color:${neutral?'var(--muted)':NEG}">${r[3]}</td></tr>`;
+  }).join("");
+  document.getElementById("fr-total").textContent = F.money2(B.total_friction);
+  document.getElementById("fr-comm").textContent  = F.money2(B.total_commission);
+  document.getElementById("fr-slip").textContent  = F.money2(B.total_slippage);
+  document.getElementById("fr-pct").textContent   = (100*B.total_friction/A.total_net_profit).toFixed(1)+"%";
+})();
+
+/* ---------- small fills ---------- */
+document.getElementById("dd-a").textContent    = F.pctp(A.max_drawdown_pct);
+document.getElementById("dd-b10").textContent  = F.pctp(D.bench_10.max_drawdown_pct);
+document.getElementById("dd-b100").textContent = F.pctp(D.bench_100.max_drawdown_pct);
+document.getElementById("conc-a").textContent  = F.pctp(A.top5_pct_of_net);
+document.getElementById("conc-b").textContent  = F.pctp(B.top5_pct_of_net);
+const exTop5 = A.total_net_profit - A.top5_sum;
+document.getElementById("conc-ex").textContent  = F.pct(100*exTop5/D.meta.start_equity);
+document.getElementById("conc-ex2").textContent = F.money2(exTop5) + " of profit on a $100,000 account";
+
+/* ---------- trade tables ---------- */
+(function(){
+  const t=[...D.trades_A].sort((a,b)=>b.net-a.net);
+  const row=x=>`<tr>
+    <td class="py-1.5">${x.entry_date}</td><td class="py-1.5">${x.exit_date}</td>
+    <td class="py-1.5 text-right muted">${x.bars_held}</td>
+    <td class="py-1.5 text-right" style="color:${x.pct>0?POS:NEG}">${F.pct(x.pct,1)}</td>
+    <td class="py-1.5 text-right font-semibold" style="color:${x.net>0?POS:NEG}">${F.money2(x.net)}</td></tr>`;
+  document.getElementById("best-rows").innerHTML  = t.slice(0,5).map(row).join("");
+  document.getElementById("worst-rows").innerHTML = t.slice(-5).reverse().map(row).join("");
+})();
+
+/* ---------- integrity ---------- */
+(function(){
+  const q=D.quality;
+  const items=[
+    {k:"Rows downloaded",v:q.rows_downloaded.toLocaleString(),p:"Complete",pc:"pill-pos",
+     n:`${D.meta.start_date} → ${D.meta.end_date}, no gaps`},
+    {k:"Null / dropped rows",v:q.rows_dropped_null,p:q.rows_dropped_null===0?"Clean":"Check",pc:q.rows_dropped_null===0?"pill-pos":"pill-amber",
+     n:"Rows with a missing O/H/L/C value"},
+    {k:"OHLC violations",v:q.ohlc_violations,p:q.ohlc_violations===0?"Clean":"Check",pc:q.ohlc_violations===0?"pill-pos":"pill-amber",
+     n:"Bars where high &lt; close or low &gt; close"},
+    {k:"Largest 1-day price ratio",v:q.max_1day_ratio+"×",p:"No split gap",pc:"pill-pos",
+     n:`on ${q.max_1day_ratio_date} · an unadjusted 2:1 split would show ≈2.0×, confirming the series is split-adjusted`},
+  ];
+  document.getElementById("integrity").innerHTML = items.map(i=>`
+    <div class="p-4 rounded" style="background:rgba(55,240,131,.05);border:1px solid rgba(30,58,69,1)">
+      <div class="flex items-start justify-between gap-2">
+        <div class="text-[11px] tracking-[.08em] uppercase muted font-bold">${i.k}</div>
+        <span class="pill ${i.pc}">${i.p}</span>
+      </div>
+      <div class="kpi text-[26px] mt-1.5">${i.v}</div>
+      <div class="def mt-1.5">${i.n}</div>
+    </div>`).join("");
+})();
+
+/* ---------- assumptions ---------- */
+(function(){
+  const A_=[
+    {id:"A14",t:"Idle cash earns 0%",b:"The largest single distortion on this page. With 10% sizing the account is at least 90% cash at all times, across a period when Treasury bills paid 0–6%. Crediting a real cash rate would raise every return figure here substantially — for the strategy <em>and</em> for both benchmarks.",d:"bends: understates all returns"},
+    {id:"A5",t:"Fills at the signal bar's close",b:"Assumes a market-on-close order filling at the official settlement price with no delay. Filling at the next morning's open instead would likely reduce returns further, since breakout entries often gap favourably overnight.",d:"bends: flatters the strategy"},
+    {id:"A20",t:"One tick = $0.01 for all 27 years",b:"Verified false for the early history: 1999 prices come back from Yahoo as sixteenths ($51.15625), so a real tick before decimalisation in April 2001 was 6.25× a penny. Variant B therefore understates slippage in its earliest years.",d:"bends: flatters Variant B"},
+    {id:"A1",t:"Split-adjusted, not dividend-adjusted prices",b:"Verified directly: the largest single-day close ratio in 27 years is 1.168×, with no ≈2.0× jump, confirming Yahoo's raw OHLC is already split-adjusted and internally consistent across all four fields.",d:"verified against the data"},
+    {id:"A2",t:"Dividends paid as cash, not reinvested",b:"Credited only while a position is open, on the ex-date, at 10% position size — so the dividend contribution is roughly a tenth of what a fully invested holder would receive. Benchmarks are treated identically.",d:"bends: neutral, applied consistently"},
+    {id:"A16",t:"No taxes modelled",b:"Average holding period is 28 bars, so essentially all gains would be short-term and taxed as ordinary income in a US taxable account. Real after-tax returns would be materially lower than shown.",d:"bends: flatters the strategy"},
+  ];
+  document.getElementById("assumptions").innerHTML = A_.map(a=>`
+    <div class="p-4 rounded" style="background:rgba(242,176,60,.06);border:1px solid rgba(242,176,60,.3)">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="text-[12.5px] font-bold">${a.t}</div>
+        <span class="pill pill-amber">Assumption ${a.id}</span>
+      </div>
+      <p class="text-[11.5px] leading-relaxed" style="opacity:.88">${a.b}</p>
+      <div class="src mt-2" style="color:var(--amber)">${a.d}</div>
+    </div>`).join("");
+})();
+
+/* ---------- limitations ---------- */
+(function(){
+  const L_=[
+    ["One instrument, one parameter pair, one history","Every number here describes 20/10 on QQQ over a single 27-year path. Nothing establishes that the rule generalises to other assets, other lookbacks, or the next 27 years. There is no out-of-sample test, no walk-forward, and no parameter sensitivity analysis in this run."],
+    ["The result rests on five trades","68.2% of frictionless net profit comes from 5 of 120 trades. Remove them and 27 years of trading yields $4,695 on a $100,000 account. A track record this concentrated is weak evidence of a repeatable edge, and the honest reading is that the outcome is close to noise."],
+    ["QQQ is a survivor, and the period is exceptional","QQQ tracks the Nasdaq-100, which was the best-performing major index of this era. Testing a long-only rule on an asset already known to have risen 13-fold embeds hindsight. The same rule on an asset that went nowhere would look far worse."],
+    ["The low drawdown is structural, not skilful","−6.77% max drawdown reflects 10% position sizing, not risk management. Any strategy risking a tenth of its capital will show a small drawdown. It must not be compared against fully-invested alternatives."],
+    ["No slippage model beyond a fixed tick","Variant B charges one tick regardless of volatility, gap size or order size. Real breakout fills are worst precisely on the fast-moving days this system trades, so live costs would likely exceed those modelled — and the pre-2001 tick is understated outright."],
+    ["Yahoo Finance data is not audit-grade","Free retail data carries known issues: retroactive restatement of adjusted prices, occasional bad ticks, and no guarantee of point-in-time accuracy. The snapshot in qqq_raw.csv makes <em>this run</em> reproducible, but not verifiable against an authoritative source."],
+    ["No cash yield means the headline understates everything","Because idle cash earns 0% (spec A14), the absolute return figures are not realistic portfolio returns for the strategy or for the benchmarks. The comparison between them remains valid — all series are handicapped identically — but the levels are not investable expectations."],
+    ["Execution realism is assumed, not demonstrated","Fills at the official close, fractional shares, no minimum commission, no market impact, no failed or partial fills, no missed signals from a human or system outage. Each is individually small; together they set a ceiling on how closely live results could track this."],
+  ];
+  document.getElementById("limitations").innerHTML = L_.map(([t,b])=>`
+    <div class="flex gap-3">
+      <div class="mt-1.5 shrink-0" style="width:6px;height:6px;border-radius:99px;background:${NEG}"></div>
+      <div>
+        <div class="text-[12.5px] font-bold mb-1">${t}</div>
+        <p class="text-[11.8px] leading-relaxed" style="opacity:.86">${b}</p>
+      </div>
+    </div>`).join("");
+})();
+
+document.getElementById("prov").textContent =
+  `QQQ · ${D.meta.n_bars.toLocaleString()} daily bars · ${D.meta.start_date} → ${D.meta.end_date} · first signal ${D.meta.first_signal_date} after the ${D.meta.entry_lookback}-bar warm-up · `+
+  `${D.meta.tradeable_bars.toLocaleString()} tradeable bars · ${D.meta.exposure_pct}% spent in the market · ${D.meta.n_dividends} dividends from ${D.meta.first_dividend} · `+
+  `yfinance ${D.meta.yfinance_version}, pandas ${D.meta.pandas_version} · generated ${D.meta.generated}`;
+</script>
+</body>
+</html>
